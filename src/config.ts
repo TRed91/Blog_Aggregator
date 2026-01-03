@@ -1,14 +1,16 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import 'dotenv/config'
 
 export type Config = {
     dbUrl: string,
     currentUserName: string
 };
 
-export function setUser(user: string): void{
-    const config: Config = { dbUrl: "postgres://example", currentUserName: user };
+export function setUser(user: string): void {
+    const dbUrl = (process.env.DB_CONNECTION_STRING ?? "") + "?sslmode=disable";
+    const config: Config = { dbUrl, currentUserName: user };
     writeConfig(config);
 }
 

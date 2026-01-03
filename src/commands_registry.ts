@@ -6,10 +6,18 @@ export function registerCommand(registry: CommandsRegistry, cmdName: string, han
     registry[cmdName] = handler;
 }
 
-export function runCommand(registry: CommandsRegistry, cmdName: string, ...args: string[]): void {
+export async function runCommand(registry: CommandsRegistry, cmdName: string, ...args: string[]): Promise<void> {
     if (cmdName in registry){
         const cmd = registry[cmdName];
-        cmd(cmdName, ...args);
+        try{
+            await cmd(cmdName, ...args);
+        } catch (ex: unknown){
+            if (ex instanceof Error){
+                throw ex;
+            }
+            throw new Error("Unknown Error!");
+        }
+        
     } else {
         console.warn(`Command ${cmdName} doesn't exist.`);
     }

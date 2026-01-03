@@ -1,10 +1,13 @@
 import { readConfig, setUser } from "./config";
-import { handlerLogin } from "./command_handler";
+import { handleGetUsers, handlerLogin, handlerRegister, handlerReset } from "./command_handler";
 import { CommandsRegistry, registerCommand, runCommand } from "./commands_registry";
 
-function main(){
+async function main(){
     const registry: CommandsRegistry = {};
     registerCommand(registry, "login", handlerLogin);
+    registerCommand(registry, "register", handlerRegister);
+    registerCommand(registry, "reset", handlerReset);
+    registerCommand(registry, "users", handleGetUsers);
 
     const args = sanitizedArgs(process.argv);
     
@@ -17,7 +20,7 @@ function main(){
     const cmdArgs = args.slice(1);
 
     try{
-        runCommand(registry, cmd, ...cmdArgs);
+        await runCommand(registry, cmd, ...cmdArgs);
     } catch (ex: unknown) {
         if (ex instanceof Error){
             console.error(ex.message);
@@ -29,6 +32,8 @@ function main(){
 
     const config = readConfig();
     console.log(config);
+
+    process.exit(0);
 }
 
 function sanitizedArgs(args: string[]): string[] {
