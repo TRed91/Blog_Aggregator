@@ -19,3 +19,33 @@ export const users = pgTable("users", {
         .notNull()
         .unique(),
 });
+
+export const feeds = pgTable("feeds", {
+    id: uuid("id")
+        .primaryKey()
+        .defaultRandom()
+        .notNull(),
+
+    createdAt: timestamp("created_at")
+        .notNull()
+        .defaultNow(),
+
+    updatedAt: timestamp("updated_at")
+        .notNull()
+        .defaultNow()
+        .$onUpdate(() => new Date()),
+
+    name: text("name")
+        .notNull(),
+
+    url: text("url")
+        .notNull()
+        .unique(),
+
+    userId: uuid()
+        .references(() => users.id, {onDelete: "cascade"})
+        .notNull(),
+})
+
+export type User = typeof users.$inferSelect;
+export type Feed = typeof feeds.$inferSelect;

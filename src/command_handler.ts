@@ -1,5 +1,8 @@
 import { setUser, readConfig } from "./config";
-import { createUser, deleteUsers, getUser, getUsers } from "./lib/db/queries/users";
+import { createUser, deleteUsers, getUser, getUserById, getUsers } from "./lib/db/queries/users";
+import { fetchFeed, RSSFeed } from "./fetch_feed";
+import { createFeed, getFeeds } from "./lib/db/queries/feeds";
+import { User, Feed } from "./lib/db/schema";
 
 export type CommandHandler = (cmd: string, ...args:string[]) => Promise<void>;
 
@@ -86,4 +89,69 @@ export async function handlerReset(cmdName: string, ...args: string[]): Promise<
         }
     }
     
+}
+
+export async function handlerAggregate(cmdName: string, ...args: string[]): Promise<void> {
+
+    const url = "https://www.wagslane.dev/index.xml";
+
+    try {
+        const feed = await fetchFeed(url);
+        console.table(feed);
+        for (const item of feed.channel.item){
+            console.table(item);
+        }
+
+    } catch (ex: unknown) {
+        if (ex instanceof Error){
+            throw ex;
+        } else {
+            throw new Error(`Unknown error while fetching feed for '${url}'`);
+        }
+    }
+}
+
+export async function hanlderAddFeed(cmdName: string, ...args: string[]): Promise<void> {
+    if (args.length < 2){
+        throw new Error("Missing arguments!");
+    }
+    const currentUserName = readConfig().currentUserName;
+    try {
+        const user = await getUser(currentUserName);
+        const feed = await createFeed(args[0], args[1], user.id);
+
+        printFeed(feed, user);
+
+    } catch (ex: unknown) {
+        if (ex instanceof Error){
+            throw ex;
+        } else {
+            throw new Error(`Unknown error while creating feed for name: '${args[0]}', url: '${args[1]}'.`);
+        }
+    }
+}
+
+function printFeed(feed: Feed, user: User): void {
+    console.log("Feed for user " + user.name);
+    console.table(feed);
+}
+
+export async function handlerFeeds(cmdName: string, ...args: string[]): Promise<void>  {
+    try{
+
+        const feeds = await getFeeds();
+        for (const feed of feeds){
+            console.log("Feed Data:");
+            console.log("- Feed Name:\t" + feed.name);
+            console.log("- Url:      \t" + feed.url);
+            console.log("- Username: \t" + (await getUserById(feed.userId)).name);
+        }
+
+    } catch (ex: unknown) {
+        if (ex instanceof Error){
+            throw ex;
+        } else {
+            throw new Error("Unknown Error while fetching feeds.");
+        }
+    }
 }

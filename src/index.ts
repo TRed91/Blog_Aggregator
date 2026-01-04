@@ -1,5 +1,5 @@
 import { readConfig, setUser } from "./config";
-import { handleGetUsers, handlerLogin, handlerRegister, handlerReset } from "./command_handler";
+import { handleGetUsers, handlerAggregate, handlerFeeds, handlerLogin, handlerRegister, handlerReset, hanlderAddFeed } from "./command_handler";
 import { CommandsRegistry, registerCommand, runCommand } from "./commands_registry";
 
 async function main(){
@@ -8,6 +8,9 @@ async function main(){
     registerCommand(registry, "register", handlerRegister);
     registerCommand(registry, "reset", handlerReset);
     registerCommand(registry, "users", handleGetUsers);
+    registerCommand(registry, "agg", handlerAggregate);
+    registerCommand(registry, "addfeed", hanlderAddFeed);
+    registerCommand(registry, "feeds", handlerFeeds);
 
     const args = sanitizedArgs(process.argv);
     
@@ -29,9 +32,6 @@ async function main(){
         }
         process.exit(1);
     }
-
-    const config = readConfig();
-    console.log(config);
 
     process.exit(0);
 }
