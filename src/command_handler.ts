@@ -1,10 +1,11 @@
 import { setUser, readConfig } from "./config";
 import { createUser, deleteUsers, getUser, getUserById, getUsers } from "./lib/db/queries/users";
 import { fetchFeed, RSSFeed } from "./fetch_feed";
-import { createFeed, getFeeds } from "./lib/db/queries/feeds";
+import { createFeed, createFeedFollow, deleteFeedFollow, getFeedByUrl, getFeedFollowsForUser, getFeeds } from "./lib/db/queries/feeds";
 import { User, Feed } from "./lib/db/schema";
 
 export type CommandHandler = (cmd: string, ...args:string[]) => Promise<void>;
+export type UserCommandHandler = (cmdName: string, user: User, ...args: string[]) => Promise<void>;
 
 export async function handlerLogin(cmdName: string, ...args: string[]): Promise<void> {
     if (args.length == 0) {
@@ -111,14 +112,14 @@ export async function handlerAggregate(cmdName: string, ...args: string[]): Prom
     }
 }
 
-export async function hanlderAddFeed(cmdName: string, ...args: string[]): Promise<void> {
+export async function hanlderAddFeed(cmdName: string, user: User, ...args: string[]): Promise<void> {
     if (args.length < 2){
         throw new Error("Missing arguments!");
     }
-    const currentUserName = readConfig().currentUserName;
+    
     try {
-        const user = await getUser(currentUserName);
         const feed = await createFeed(args[0], args[1], user.id);
+        const followResult = await createFeedFollow(user.id, feed.id);
 
         printFeed(feed, user);
 
@@ -140,6 +141,10 @@ export async function handlerFeeds(cmdName: string, ...args: string[]): Promise<
     try{
 
         const feeds = await getFeeds();
+        if (!feeds || feeds.length == 0){
+            console.log("No feeds in database!");
+            return;
+        }
         for (const feed of feeds){
             console.log("Feed Data:");
             console.log("- Feed Name:\t" + feed.name);
@@ -152,6 +157,80 @@ export async function handlerFeeds(cmdName: string, ...args: string[]): Promise<
             throw ex;
         } else {
             throw new Error("Unknown Error while fetching feeds.");
+        }
+    }
+}
+
+export async function handlerFollow(cmdName: string, user: User, ...args: string[]): Promise<void> {
+    if (args.length == 0){
+        throw new Error("url argument missing!");
+    }
+  
+    const url = args[0];
+
+    try {
+
+        const feed = await getFeedByUrl(url);
+        if (!feed){
+            throw new Error(`Feed for url ${url} doesn't exist!`);
+        }
+
+        const result = await createFeedFollow(user.id, feed.id);
+
+        console.log("New Feed Follow created!");
+        console.table(result);
+
+    } catch (ex: unknown) {
+        if (ex instanceof Error){
+            throw ex;
+        } else {
+            throw new Error(`Unknown Error creating feed follow for user '${user.name}' and url '${url}'.`);
+        }
+    }
+}
+
+export async function handlerFollowing(cmdName: string, user: User, ...args: string[]): Promise<void> {
+
+    try {
+
+        const feeds = await getFeedFollowsForUser(user.id);
+        if (!feeds || feeds.length == 0){
+            console.log(`No feeds followed by user '${user.name}'.`);
+            return;
+        }
+
+
+        console.log(`${user.name} is currently following these feeds:`)
+        for (const feedFollow of feeds) {
+            console.log("\t- " + feedFollow.feed);
+        }
+
+    } catch (ex: unknown) {
+        if (ex instanceof Error){
+            throw ex;
+        } else {
+            throw new Error(`Unknown Error while fetching following feeds for '${user.name}'.`);
+        }
+    }
+}
+
+export async function hanlerUnfollow(cmdName: string, user: User, ...args: string[]): Promise<void>  {
+    if (args.length == 0){
+        throw new Error("url argument missing!");
+    }
+
+    try {
+
+        const feed = await getFeedByUrl(args[0]);
+        await deleteFeedFollow(user.id, feed.id);
+
+        console.log(`User ${user.name} unfollowed ${args[0]}`);
+
+    } catch (ex: unknown) {
+        if (ex instanceof Error){
+            throw ex;
+        } else {
+            throw new Error(`Unknown Error while trying to unfollow '${args[0]}'.`);
         }
     }
 }
