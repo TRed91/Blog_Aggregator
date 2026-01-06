@@ -28,3 +28,8 @@ export async function getPostsForUser(userId: string, limit: number): Promise<Po
     
     return result;
 }
+
+export async function getPostByUrl(url: string): Promise<Post> {
+    const [result] = await db.select().from(posts).where(eq(posts.url, url));
+    return result;
+}

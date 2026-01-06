@@ -1,6 +1,6 @@
 import { fetchFeed } from "./fetch_feed";
 import { getNextFeedToFetch, markFeedFetched } from "./lib/db/queries/feeds";
-import { createPost } from "./lib/db/queries/posts";
+import { createPost, getPostByUrl } from "./lib/db/queries/posts";
 
 export async function scrapeFeeds(){
     try {
@@ -9,7 +9,10 @@ export async function scrapeFeeds(){
         const rssFeed = await fetchFeed(feed.url);
 
         for (const item of rssFeed.channel.item){
-            await createPost(item.title, item.link, feed.id, new Date(item.pubDate), item.description);
+            const existingPost = await getPostByUrl(item.link);
+            if (!existingPost) {
+                await createPost(item.title, item.link, feed.id, new Date(item.pubDate), item.description);
+            }
         }
     } catch (ex: unknown){
         if (ex instanceof Error){
