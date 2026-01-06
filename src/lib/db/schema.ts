@@ -35,6 +35,8 @@ export const feeds = pgTable("feeds", {
         .defaultNow()
         .$onUpdate(() => new Date()),
 
+    lastFetchedAt: timestamp("last_fetched_at"),
+
     name: text("name")
         .notNull(),
 

@@ -1,11 +1,18 @@
 import { setUser, readConfig } from "./config";
 import { createUser, deleteUsers, getUser, getUserById, getUsers } from "./lib/db/queries/users";
 import { fetchFeed, RSSFeed } from "./fetch_feed";
-import { createFeed, createFeedFollow, deleteFeedFollow, getFeedByUrl, getFeedFollowsForUser, getFeeds } from "./lib/db/queries/feeds";
+import { createFeed, createFeedFollow, deleteFeedFollow, getFeedByUrl, getFeedFollowsForUser, getFeeds, getNextFeedToFetch } from "./lib/db/queries/feeds";
 import { User, Feed } from "./lib/db/schema";
+import { scrapeFeeds } from "./scrape_feeds";
 
 export type CommandHandler = (cmd: string, ...args:string[]) => Promise<void>;
 export type UserCommandHandler = (cmdName: string, user: User, ...args: string[]) => Promise<void>;
+
+type Duration = {
+    time: number,
+    unit: string,
+    timeInMs: number
+}
 
 export async function handlerLogin(cmdName: string, ...args: string[]): Promise<void> {
     if (args.length == 0) {
@@ -94,22 +101,69 @@ export async function handlerReset(cmdName: string, ...args: string[]): Promise<
 
 export async function handlerAggregate(cmdName: string, ...args: string[]): Promise<void> {
 
-    const url = "https://www.wagslane.dev/index.xml";
+    if (args.length == 0) {
+        throw new Error("time_betweem_reqs argument missing!"); 
+    }
 
     try {
-        const feed = await fetchFeed(url);
-        console.table(feed);
-        for (const item of feed.channel.item){
-            console.table(item);
-        }
+        const timeBetweenReqs = parseDuration(args[0]);
+
+        console.log(`Collecting feeds every ${timeBetweenReqs.time}${timeBetweenReqs.unit}...`);
+
+        scrapeFeeds().catch(throwScrapeError);
+
+        const interval = setInterval(() => {
+            console.log("fetching...");
+            scrapeFeeds().catch(throwScrapeError);
+        }, timeBetweenReqs.timeInMs)
+
+        await new Promise<void>((resolve) => {
+            process.on("SIGINT", () => {
+                console.log("Shutting down feed aggregator...");
+                clearInterval(interval);
+                resolve();
+            });
+        });
 
     } catch (ex: unknown) {
         if (ex instanceof Error){
             throw ex;
         } else {
-            throw new Error(`Unknown error while fetching feed for '${url}'`);
+            throw new Error(`Unknown error while scraping.`);
         }
     }
+}
+
+function throwScrapeError(e: any){
+    if (e instanceof Error) {
+        throw e;
+    } else {
+        throw new Error("Unkown Error during scraping!");
+    }
+}
+
+function parseDuration(durationStr: string): Duration {
+    const regex = /^(\d+)(ms|s|m|h)$/;
+    const match = durationStr.match(regex);
+    if (match){
+        
+        const num = parseInt(match[1]);
+        let unit = match[2];
+        let timeInMs = 0;
+
+        switch(unit){
+            case 's': timeInMs = num * 1000; break;
+            case 'm': timeInMs = num * 60000; break;
+            case 'h': timeInMs = num * 1000 * 60 * 60; break;
+            default: timeInMs = num; unit = 'ms'; break;
+        }
+        return {
+            time: num,
+            unit: unit,
+            timeInMs: timeInMs
+        };
+    }
+    throw new Error("Invalid time input!");
 }
 
 export async function hanlderAddFeed(cmdName: string, user: User, ...args: string[]): Promise<void> {
