@@ -4,6 +4,7 @@ import { fetchFeed, RSSFeed } from "./fetch_feed";
 import { createFeed, createFeedFollow, deleteFeedFollow, getFeedByUrl, getFeedFollowsForUser, getFeeds, getNextFeedToFetch } from "./lib/db/queries/feeds";
 import { User, Feed } from "./lib/db/schema";
 import { scrapeFeeds } from "./scrape_feeds";
+import { getPostsForUser } from "./lib/db/queries/posts";
 
 export type CommandHandler = (cmd: string, ...args:string[]) => Promise<void>;
 export type UserCommandHandler = (cmdName: string, user: User, ...args: string[]) => Promise<void>;
@@ -285,6 +286,33 @@ export async function hanlerUnfollow(cmdName: string, user: User, ...args: strin
             throw ex;
         } else {
             throw new Error(`Unknown Error while trying to unfollow '${args[0]}'.`);
+        }
+    }
+}
+
+export async function handlerBrowse(cmdName: string, user: User, ...args: string[]): Promise<void> {
+    const limit: number = args.length > 0 ? parseInt(args[0]) : 2;
+
+    try {
+
+        const posts = await getPostsForUser(user.id, limit);
+
+        if (!posts || posts.length == 0){
+            console.log(`No posts for user ${user.name}.`);
+            return;
+        }
+
+        console.log(`\nPrint posts for user ${user.name}:\n`);
+
+        for (const post of posts){
+            console.table(post);
+        }
+
+    } catch (ex: unknown) {
+        if (ex instanceof Error){
+            throw ex;
+        } else {
+            throw new Error(`Unknown Error while trying to fetch posts.`);
         }
     }
 }

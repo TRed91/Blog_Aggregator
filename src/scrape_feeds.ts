@@ -1,14 +1,15 @@
 import { fetchFeed } from "./fetch_feed";
 import { getNextFeedToFetch, markFeedFetched } from "./lib/db/queries/feeds";
+import { createPost } from "./lib/db/queries/posts";
 
 export async function scrapeFeeds(){
     try {
-        const nextFeed = await getNextFeedToFetch();
-        await markFeedFetched(nextFeed.id);
-        const rssFeed = await fetchFeed(nextFeed.url);
+        const feed = await getNextFeedToFetch();
+        await markFeedFetched(feed.id);
+        const rssFeed = await fetchFeed(feed.url);
 
         for (const item of rssFeed.channel.item){
-            console.log(item.title);
+            await createPost(item.title, item.link, feed.id, new Date(item.pubDate), item.description);
         }
     } catch (ex: unknown){
         if (ex instanceof Error){

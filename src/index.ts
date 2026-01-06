@@ -1,5 +1,5 @@
 import { readConfig, setUser } from "./config";
-import { handleGetUsers, handlerAggregate, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, hanlderAddFeed, hanlerUnfollow } from "./command_handler";
+import { handleGetUsers, handlerAggregate, handlerBrowse, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, hanlderAddFeed, hanlerUnfollow } from "./command_handler";
 import { CommandsRegistry, registerCommand, runCommand } from "./commands_registry";
 import { middlewareLoggedIn } from "./logged_in_middleware";
 
@@ -15,6 +15,7 @@ async function main(){
     registerCommand(registry, "follow", middlewareLoggedIn(handlerFollow));
     registerCommand(registry, "following", middlewareLoggedIn(handlerFollowing));
     registerCommand(registry, "unfollow", middlewareLoggedIn(hanlerUnfollow));
+    registerCommand(registry, "browse", middlewareLoggedIn(handlerBrowse));
 
     const args = sanitizedArgs(process.argv);
     
